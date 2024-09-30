@@ -34,7 +34,7 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
     ```sh
     sudo bash
     mkdir -p /config/scripts/firstboot.d
-    curl -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/firstboot.d/tailscale.sh
+    curl -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/sveasmart/tailscale-edgeos/main/firstboot.d/tailscale.sh
     chmod 755 /config/scripts/firstboot.d/tailscale.sh
     /config/scripts/firstboot.d/tailscale.sh
     /config/scripts/post-config.d/tailscale.sh
@@ -44,7 +44,7 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 
     The example below enables subnet routing for one subnet, enables use as an exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be generated at https://login.tailscale.com/admin/authkeys
 
-    :warning: Remember to change `192.0.2.0/24` with the subnet(s) you *actually want to expose* to the tailnet.
+    :warning: Remember to change `192.0.2.0/24` with the subnet(s) you _actually want to expose_ to the tailnet.
 
     ```sh
     tailscale up --advertise-routes 192.0.2.0/24 --advertise-exit-node --authkey tskey-XXX
@@ -71,7 +71,6 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
         set service ssh listen-address <Tailscale IP>
         commit comment "sshd listen on Tailscale IP"
         ```
-
 
 ## Firmware Upgrades
 
