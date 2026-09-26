@@ -20,21 +20,21 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 2. Create required directories and download and run firstboot script
 
     Scripts in the `firstboot.d` directory are run after firmware upgrades.
-    This script ensures that the Tailscale daemon's state is symlinked to
+    This script ensures that the Tailscale daemon's state is bind-mounted from
     `/config` so it persists across firmware upgrades (otherwise you'll have to
     set up as a new device on every upgrade) and installs a `post-config.d`
     script to ensure Tailscale is installed after each boot.
 
-    The `post-config.d` script also copies the Debian package to
-    `/config/data/firstboot/install-packages` so the package can be installed
-    during `firstboot` after a firmware upgrade to ensure the package gets
-    installed and doesn't require downloading it again. This also means the
-    same version will be consistently installed.
+    The package itself is not stored under `/config`, because doing so can make
+    EdgeOS configuration backups too large for the limited flash storage on an
+    ER-X. The script removes Tailscale packages cached there by older versions.
+    After a firmware upgrade, the current version from the configured Tailscale
+    repository is downloaded again.
 
     ```sh
     sudo bash
     mkdir -p /config/scripts/firstboot.d
-    curl -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/sveasmart/tailscale-edgeos/main/firstboot.d/tailscale.sh
+    curl -fL -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/sveasmart/tailscale-edgeos/main/firstboot.d/tailscale.sh
     chmod 755 /config/scripts/firstboot.d/tailscale.sh
     /config/scripts/firstboot.d/tailscale.sh
     /config/scripts/post-config.d/tailscale.sh
@@ -55,7 +55,7 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
     1. Fetch the override unit
 
         ```sh
-        curl -o /config/tailscale/systemd/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/systemd/tailscaled.service.d/before-ssh.conf
+        curl -fL -o /config/tailscale/systemd/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/sveasmart/tailscale-edgeos/main/systemd/tailscaled.service.d/before-ssh.conf
         systemctl daemon-reload
         ```
 
@@ -77,9 +77,9 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 After an EdgeOS upgrade third-party packages are no longer installed, but the
 `firstboot` script described above ensures Tailscale gets reinstalled.
 
-Note that it will install the Tailscale version from the first time the
-`post-config.d` script ran. If you had upgraded Tailscale since you will need
-to re-upgrade it.
+The router must have working Internet and DNS access during its first boot into
+the new firmware. The script installs the current version from the configured
+Tailscale repository and cleans downloaded package archives afterwards.
 
 ## Upgrading Tailscale
 
@@ -90,39 +90,18 @@ result in a broken system.
 
 ```
 sudo apt-get update
-sudo apt-get install tailscale
+sudo apt-get install --no-install-recommends tailscale
+sudo apt-get clean
 ```
 
 If you want to install a specific version of Tailscale use:
 
 ```
-sudo apt-get install tailscale=X.Y.Z
+sudo apt-get install --no-install-recommends tailscale=X.Y.Z
+sudo apt-get clean
 ```
 
 Where `X.Y.Z` is the version you want. This also works for downgrading.
-
-If you consider this version to be "stable" for your use-cases you should think
-about copying the package to flash memory so it survives firmware upgrades,
-otherwise an older version may get installed.
-
-First check if old packages are saved:
-
-```
-sudo bash
-ls -l /config/data/firstboot/install-packages
-```
-
-If old versions exist delete them, e.g.
-
-```
-rm /config/data/firstboot/install-packages/tailscale_1.6.0_mips.deb
-```
-
-Then copy the latest version:
-
-```
-cp /var/cache/apt/archives/tailscale_*.deb /config/data/firstboot/install-packages
-```
 
 If you still receive an **out of space** error when upgrading, try cleaning the system's images using:
 
@@ -135,7 +114,6 @@ If you have a **certificate error** when upgrading, unfortunately it is an [Edge
 ```
 sudo -i
 sed -i 's|^mozilla\/DST_Root_CA_X3\.crt|!mozilla/DST_Root_CA_X3.crt|' /etc/ca-certificates.conf
-curl -sk https://letsencrypt.org/certs/isrgrootx1.pem -o /usr/local/share/ca-certificates/ISRG_Root_X1.crt
 update-ca-certificates --fresh
 ```
 
